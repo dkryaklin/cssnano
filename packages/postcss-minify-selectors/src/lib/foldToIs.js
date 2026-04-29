@@ -101,9 +101,6 @@ function hasNthChildOfClause(token) {
       continue;
     }
     for (const child of n.nodes) {
-      if (child.type !== 'selector') {
-        continue;
-      }
       for (const inner of child.nodes) {
         if (inner.type === 'tag' && inner.value === 'of') {
           return true;
