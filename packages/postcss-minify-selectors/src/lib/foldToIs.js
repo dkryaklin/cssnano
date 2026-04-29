@@ -80,6 +80,40 @@ function hasPseudoElementOrNesting(token) {
   return false;
 }
 
+/**
+ * `:nth-child(An+B of S)` / `:nth-last-child(An+B of S)` add the specificity
+ * of `S` to the pseudo-class. The selector parser flattens `An+B` and the
+ * `of S` clause into a single child selector, so we can't cleanly recover S's
+ * spec. Reject folding any compound that uses this syntax to stay safe.
+ *
+ * @param {Token} token
+ * @return {boolean}
+ */
+function hasNthChildOfClause(token) {
+  if (token.kind !== 'compound' || !token.nodes) {
+    return false;
+  }
+  for (const n of token.nodes) {
+    if (n.type !== 'pseudo') {
+      continue;
+    }
+    if (n.value !== ':nth-child' && n.value !== ':nth-last-child') {
+      continue;
+    }
+    for (const child of n.nodes) {
+      if (child.type !== 'selector') {
+        continue;
+      }
+      for (const inner of child.nodes) {
+        if (inner.type === 'tag' && inner.value === 'of') {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 /** @typedef {[number, number, number]} Specificity */
 
 /**
@@ -270,6 +304,9 @@ function tryFold(root) {
       if (hasPseudoElementOrNesting(token)) {
         return null;
       }
+      if (hasNthChildOfClause(token)) {
+        return null;
+      }
     }
   }
 
@@ -306,3 +343,13 @@ function tryFold(root) {
 }
 
 module.exports = tryFold;
+module.exports._internal = {
+  tokenize,
+  hasPseudoElementOrNesting,
+  hasNthChildOfClause,
+  specificityOf,
+  specificityOfMiddle,
+  maxChildSpecificity,
+  compareSpecificity,
+  sameSpecificity,
+};
